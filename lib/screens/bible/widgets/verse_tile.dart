@@ -6,8 +6,8 @@ class VerseTile extends StatelessWidget {
   final String text;
   final double fontSize;
   final bool isSelected;
+  final bool isBookmarked;
   final VoidCallback onTap;
-  final VoidCallback? onAskAI;
   final VoidCallback? onBookmark;
   final VoidCallback? onHighlight;
   final VoidCallback? onShare;
@@ -18,8 +18,8 @@ class VerseTile extends StatelessWidget {
     required this.text,
     this.fontSize = 17,
     this.isSelected = false,
+    this.isBookmarked = false,
     required this.onTap,
-    this.onAskAI,
     this.onBookmark,
     this.onHighlight,
     this.onShare,
@@ -88,37 +88,12 @@ class VerseTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              InkWell(
-                onTap: onAskAI,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.auto_awesome, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Preguntar a IA',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
               IconButton(
-                icon: const Icon(
-                  Icons.star_border,
+                tooltip: isBookmarked
+                    ? 'Quitar de favoritos'
+                    : 'Agregar a favoritos',
+                icon: Icon(
+                  isBookmarked ? Icons.star : Icons.star_border,
                   size: 20,
                   color: Colors.white,
                 ),
@@ -127,6 +102,7 @@ class VerseTile extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
               ),
               IconButton(
+                tooltip: 'Editar resaltado',
                 icon: const Icon(
                   Icons.border_color,
                   size: 18,
@@ -137,6 +113,7 @@ class VerseTile extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
               ),
               IconButton(
+                tooltip: 'Compartir versículo',
                 icon: const Icon(Icons.share, size: 18, color: Colors.white),
                 onPressed: onShare,
                 constraints: const BoxConstraints(),
@@ -150,45 +127,53 @@ class VerseTile extends StatelessWidget {
         InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryFixed.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: const Border(
-                left: BorderSide(color: AppColors.secondary, width: 4),
-              ),
+          child: TweenAnimationBuilder<Color?>(
+            tween: ColorTween(
+              begin: AppColors.surfaceContainerLowest,
+              end: AppColors.secondaryFixed.withValues(alpha: 0.42),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                SizedBox(
-                  width: 24,
-                  child: Text(
-                    '$number',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.secondary,
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeOutCubic,
+            builder: (context, backgroundColor, child) => Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: const Border(
+                  left: BorderSide(color: AppColors.secondary, width: 4),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: Text(
+                      '$number',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.secondary,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      height: 1.8,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.onSurface,
-                      fontFamily: 'Serif',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        height: 1.8,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                        fontFamily: 'Serif',
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

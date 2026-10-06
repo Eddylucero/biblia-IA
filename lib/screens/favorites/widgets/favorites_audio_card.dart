@@ -21,13 +21,16 @@ class FavoritesAudioCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuBDhDGgqjTdaOf-oXhQUtw6AOq-CviesxZYLzshxVD961TuwZLPSX3mNA0CgHmLq7yFJ4dd473l28R8QI6IT5tnuzMP30bEaHYIfTfBvjBkRJCRPREOZRKUMVzxq9_ENCjwgsO-zCzeWMeW-fPyB5TV0TLaC90ZgIulCLWCNHr_xpNKc99qnZIP5Fsew4GTmcI_6COaPt5aMZt7Fp02_Dq_ROxKpiN6ykfYnpShqSOr2N6G6Nrs1hHR',
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.secondaryFixed,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.headphones,
+              color: AppColors.onSecondaryFixed,
             ),
           ),
           const SizedBox(width: 14),

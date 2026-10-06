@@ -4,6 +4,8 @@ import '../../core/constants/app_colors.dart';
 import '../../models/book_model.dart';
 import '../../models/verse_model.dart';
 import '../../repositories/bible_repository.dart';
+import '../../repositories/favorite_verse_repository.dart';
+import '../../repositories/reading_progress_repository.dart';
 import 'widgets/verse_tile.dart';
 
 class ChapterViewScreen extends StatefulWidget {
@@ -11,6 +13,7 @@ class ChapterViewScreen extends StatefulWidget {
   final String bookName;
   final int chapterNumber;
   final int chaptersCount;
+  final int? selectedVerseNumber;
   final BibleDataSource? dataSource;
 
   const ChapterViewScreen({
@@ -19,6 +22,7 @@ class ChapterViewScreen extends StatefulWidget {
     this.bookName = 'Juan',
     this.chapterNumber = 3,
     this.chaptersCount = 0,
+    this.selectedVerseNumber,
     this.dataSource,
   });
 
@@ -28,12 +32,19 @@ class ChapterViewScreen extends StatefulWidget {
 
 class _ChapterViewScreenState extends State<ChapterViewScreen> {
   late final BibleDataSource _dataSource;
+  final ReadingProgressRepository _readingProgressRepository =
+      ReadingProgressRepository.instance;
+  final FavoriteVerseRepository _favoriteVerseRepository =
+      FavoriteVerseRepository.instance;
   late Future<List<VerseModel>> _versesFuture;
   late int _bookId;
   late int _chapterNumber;
   late int _chaptersCount;
-  int? _selectedVerseNumber;
+  late int? _selectedVerseNumber;
+  final GlobalKey _initialSelectedVerseKey = GlobalKey();
+  bool _hasScrolledToInitialVerse = false;
   bool _isBookmarked = false;
+  bool _isVerseBookmarked = false;
   double _fontSize = 17;
 
   @override
@@ -43,6 +54,7 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
     _bookId = widget.bookId;
     _chapterNumber = widget.chapterNumber;
     _chaptersCount = widget.chaptersCount;
+    _selectedVerseNumber = widget.selectedVerseNumber;
     _versesFuture = _loadVerses();
   }
 
@@ -63,10 +75,76 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
       _chaptersCount = book.chaptersCount;
     }
 
-    return _dataSource.getChapterVerses(
+    await _saveReadingProgress();
+    final verses = await _dataSource.getChapterVerses(
       bookId: _bookId,
       chapter: _chapterNumber,
     );
+    final selectedVerseNumber = _selectedVerseNumber;
+    if (selectedVerseNumber != null) {
+      final favorites = await _favoriteVerseRepository.load();
+      _isVerseBookmarked = favorites.any(
+        (favorite) =>
+            favorite.bookId == _bookId &&
+            favorite.chapter == _chapterNumber &&
+            favorite.verse == selectedVerseNumber,
+      );
+    }
+    return verses;
+  }
+
+  Future<void> _selectVerse(VerseModel verse) async {
+    final selectedVerseNumber = _selectedVerseNumber == verse.verse
+        ? null
+        : verse.verse;
+    setState(() {
+      _selectedVerseNumber = selectedVerseNumber;
+      _isVerseBookmarked = false;
+    });
+    await _saveReadingProgress();
+    if (selectedVerseNumber == null) return;
+
+    final favorites = await _favoriteVerseRepository.load();
+    if (!mounted || _selectedVerseNumber != selectedVerseNumber) return;
+    setState(() {
+      _isVerseBookmarked = favorites.any(
+        (favorite) =>
+            favorite.bookId == _bookId &&
+            favorite.chapter == _chapterNumber &&
+            favorite.verse == selectedVerseNumber,
+      );
+    });
+  }
+
+  Future<void> _toggleFavorite(VerseModel verse) async {
+    final isBookmarked = await _favoriteVerseRepository.toggle(
+      FavoriteVerse(
+        bookId: _bookId,
+        bookName: widget.bookName,
+        chapter: _chapterNumber,
+        verse: verse.verse,
+        text: verse.text,
+        savedAtMilliseconds: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (!mounted || _selectedVerseNumber != verse.verse) return;
+    setState(() => _isVerseBookmarked = isBookmarked);
+  }
+
+  Future<void> _saveReadingProgress() async {
+    try {
+      await _readingProgressRepository.save(
+        ReadingProgress(
+          bookId: _bookId,
+          bookName: widget.bookName,
+          chapter: _chapterNumber,
+          chaptersCount: _chaptersCount,
+          verseNumber: _selectedVerseNumber,
+        ),
+      );
+    } catch (error) {
+      debugPrint('No se pudo guardar el avance de lectura: $error');
+    }
   }
 
   void _changeChapter(int chapter) {
@@ -76,6 +154,7 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
     setState(() {
       _chapterNumber = chapter;
       _selectedVerseNumber = null;
+      _isVerseBookmarked = false;
       _versesFuture = _loadVerses();
     });
   }
@@ -175,12 +254,30 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
                   );
                 }
 
-                return ListView.builder(
+                final selectedVerseExists = verses.any(
+                  (verse) => verse.verse == widget.selectedVerseNumber,
+                );
+                if (!_hasScrolledToInitialVerse && selectedVerseExists) {
+                  _hasScrolledToInitialVerse = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final selectedContext =
+                        _initialSelectedVerseKey.currentContext;
+                    if (mounted && selectedContext != null) {
+                      Scrollable.ensureVisible(
+                        selectedContext,
+                        alignment: 0.25,
+                        duration: const Duration(milliseconds: 520),
+                        curve: Curves.easeOutCubic,
+                      );
+                    }
+                  });
+                }
+
+                return SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                  itemCount: verses.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return Padding(
+                  child: Column(
+                    children: [
+                      Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: Column(
                           children: [
@@ -204,32 +301,23 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
                             ),
                           ],
                         ),
-                      );
-                    }
-
-                    final verse = verses[index - 1];
-                    return VerseTile(
-                      number: verse.verse,
-                      text: verse.text,
-                      fontSize: _fontSize,
-                      isSelected: _selectedVerseNumber == verse.verse,
-                      onTap: () => setState(() {
-                        _selectedVerseNumber =
-                            _selectedVerseNumber == verse.verse
-                            ? null
-                            : verse.verse;
-                      }),
-                      onAskAI: () => Navigator.of(context).pushNamed(
-                        '/chat',
-                        arguments: {
-                          'bookName': widget.bookName,
-                          'chapterNumber': _chapterNumber,
-                          'verseNumber': verse.verse,
-                          'verseText': verse.text,
-                        },
                       ),
-                    );
-                  },
+                      ...verses.map(
+                        (verse) => VerseTile(
+                          key: verse.verse == widget.selectedVerseNumber
+                              ? _initialSelectedVerseKey
+                              : ValueKey<int>(verse.verse),
+                          number: verse.verse,
+                          text: verse.text,
+                          fontSize: _fontSize,
+                          isSelected: _selectedVerseNumber == verse.verse,
+                          isBookmarked: _isVerseBookmarked,
+                          onTap: () => _selectVerse(verse),
+                          onBookmark: () => _toggleFavorite(verse),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

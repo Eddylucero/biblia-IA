@@ -34,12 +34,14 @@ class _BibleScreenState extends State<BibleScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ChapterSelectionSheet(
+        bookId: book.id,
         bookName: book.name,
         testament: book.isNewTestament
             ? 'Nuevo Testamento'
             : 'Antiguo Testamento',
         totalChapters: book.chaptersCount,
-        onChapterSelected: (chapter) {
+        dataSource: _dataSource,
+        onSelection: (chapter, verse) {
           Navigator.of(context).pushNamed(
             '/chapter',
             arguments: {
@@ -47,6 +49,7 @@ class _BibleScreenState extends State<BibleScreen> {
               'bookName': book.name,
               'chapterNumber': chapter,
               'chaptersCount': book.chaptersCount,
+              'selectedVerseNumber': verse,
             },
           );
         },
@@ -141,24 +144,33 @@ class _BibleScreenState extends State<BibleScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SegmentedButton<int>(
-                      segments: [
-                        ButtonSegment(
-                          value: 0,
-                          label: Text(
-                            'Antiguo Testamento ($oldTestamentCount)',
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: 1,
-                          label: Text('Nuevo Testamento ($newTestamentCount)'),
-                        ),
-                      ],
-                      selected: {_selectedTestamentTab},
-                      onSelectionChanged: (selection) => setState(
-                        () => _selectedTestamentTab = selection.first,
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.outlineVariant),
                       ),
-                      showSelectedIcon: false,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildTestamentTab(
+                              index: 0,
+                              title: 'Antiguo Testamento',
+                              bookCount: oldTestamentCount,
+                              icon: Icons.menu_book_outlined,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildTestamentTab(
+                              index: 1,
+                              title: 'Nuevo Testamento',
+                              bookCount: newTestamentCount,
+                              icon: Icons.auto_stories_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -189,6 +201,78 @@ class _BibleScreenState extends State<BibleScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildTestamentTab({
+    required int index,
+    required String title,
+    required int bookCount,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedTestamentTab == index;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$title, $bookCount libros',
+      child: InkWell(
+        onTap: () => setState(() => _selectedTestamentTab = index),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected
+                    ? AppColors.secondaryFixed
+                    : AppColors.secondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? AppColors.onPrimary
+                            : AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '$bookCount libros',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? AppColors.secondaryFixed
+                            : AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

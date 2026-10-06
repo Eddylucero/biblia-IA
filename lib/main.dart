@@ -41,12 +41,16 @@ class MyApp extends StatelessWidget {
           final chapterNumber = routeArguments['chapterNumber'];
           final bookId = routeArguments['bookId'];
           final chaptersCount = routeArguments['chaptersCount'];
+          final selectedVerseNumber = routeArguments['selectedVerseNumber'];
 
           return ChapterViewScreen(
             bookId: bookId is int ? bookId : 0,
             bookName: bookName is String ? bookName : 'Juan',
             chapterNumber: chapterNumber is int ? chapterNumber : 3,
             chaptersCount: chaptersCount is int ? chaptersCount : 0,
+            selectedVerseNumber: selectedVerseNumber is int
+                ? selectedVerseNumber
+                : null,
             dataSource: bibleDataSource,
           );
         },

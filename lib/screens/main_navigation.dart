@@ -23,7 +23,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _selectedIndex;
 
   List<Widget> get _screens => [
-    const HomeScreen(),
+    HomeScreen(dataSource: widget.dataSource),
     BibleScreen(dataSource: widget.dataSource),
     const ProfileScreen(),
   ];

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../repositories/bible_repository.dart';
 import '../../core/constants/app_colors.dart';
 import 'widgets/ai_prompt_card.dart';
 import 'widgets/daily_verse_card.dart';
 import 'widgets/quick_access_section.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final BibleDataSource? dataSource;
+
+  const HomeScreen({super.key, this.dataSource});
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +83,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const AiPromptCard(),
             const SizedBox(height: 24),
-            const DailyVerseCard(),
+            DailyVerseCard(dataSource: dataSource),
             const SizedBox(height: 20),
             _buildReflectionCard(),
             const SizedBox(height: 24),

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
+import '../../repositories/favorite_verse_repository.dart';
 import 'widgets/favorite_verse_card.dart';
 import 'widgets/favorites_audio_card.dart';
 
@@ -23,6 +27,17 @@ class FavoriteVerseItem {
     this.note,
     this.hasAiDeepDive = false,
   });
+
+  factory FavoriteVerseItem.fromFavorite(FavoriteVerse favorite) {
+    return FavoriteVerseItem(
+      id: favorite.id,
+      tag: 'favorito',
+      date: favorite.dateLabel,
+      scriptureText: favorite.text,
+      reference: favorite.reference,
+      accentColor: AppColors.secondary,
+    );
+  }
 }
 
 class FavoritesScreen extends StatefulWidget {
@@ -33,74 +48,52 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
+  final FavoriteVerseRepository _repository = FavoriteVerseRepository.instance;
   final TextEditingController _searchController = TextEditingController();
-  String _selectedTag = 'all';
+  List<FavoriteVerseItem> _verses = [];
 
-  final List<String> _tags = ['all', 'paz', 'fe', 'esperanza', 'fortaleza'];
-
-  final List<FavoriteVerseItem> _verses = [
-    FavoriteVerseItem(
-      id: 'juan316',
-      tag: 'esperanza',
-      date: '12 de Octubre, 2024',
-      scriptureText:
-          'Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.',
-      reference: 'Juan 3:16',
-      accentColor: AppColors.secondary,
-      hasAiDeepDive: true,
-    ),
-    FavoriteVerseItem(
-      id: 'isaias4110',
-      tag: 'fortaleza',
-      date: '05 de Octubre, 2024',
-      scriptureText:
-          'No temas, porque yo estoy contigo; no desmayes, porque yo soy tu Dios que te esfuerzo; siempre te ayudaré, siempre te sustentaré con la diestra de mi justicia.',
-      reference: 'Isaías 41:10',
-      accentColor: AppColors.secondaryFixedDim,
-      note: 'Ánimo personal',
-    ),
-    FavoriteVerseItem(
-      id: 'salmo231',
-      tag: 'paz',
-      date: '28 de Septiembre, 2024',
-      scriptureText: 'El Señor es mi pastor; nada me faltará.',
-      reference: 'Salmos 23:1',
-      accentColor: AppColors.secondaryFixed,
-      note: 'Oración nocturna',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository.current.addListener(_handleFavoritesChanged);
+    unawaited(_repository.load());
+  }
 
   @override
   void dispose() {
+    _repository.current.removeListener(_handleFavoritesChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleFavoritesChanged() {
+    if (!mounted) return;
+    setState(() {
+      _verses = _repository.current.value
+          .map(FavoriteVerseItem.fromFavorite)
+          .toList(growable: false);
+    });
   }
 
   List<FavoriteVerseItem> get _filteredVerses {
     final query = _searchController.text.toLowerCase().trim();
     return _verses.where((verse) {
-      final matchesTag =
-          _selectedTag == 'all' || verse.tag.toLowerCase() == _selectedTag;
       final matchesSearch =
           query.isEmpty ||
           verse.scriptureText.toLowerCase().contains(query) ||
           verse.reference.toLowerCase().contains(query) ||
           (verse.note != null && verse.note!.toLowerCase().contains(query));
-      return matchesTag && matchesSearch;
+      return matchesSearch;
     }).toList();
   }
 
   void _removeVerse(String id) {
-    setState(() {
-      _verses.removeWhere((item) => item.id == id);
-    });
+    unawaited(_repository.remove(id));
   }
 
   void _resetFilters() {
-    setState(() {
-      _searchController.clear();
-      _selectedTag = 'all';
-    });
+    _searchController.clear();
+    setState(() {});
   }
 
   @override
@@ -118,9 +111,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         ),
         title: Row(
           children: [
-            Image.network(
-              'https://lh3.googleusercontent.com/aida/AEtjO1W3jnvO55adWVwmyKUJh2se5gI4M-sgs1VUFkCXYcrGvFkmdREF4j5YcVqbht9_3tTOg1425qBi91QMQQOALRM8-39V5zTSUm_Pp31O93CPRHlEh59Irf3Hea766Yh1GgNgcRf1CqwQAFDG8u2Gp3KYgVvxiT3rBQATndImrJMgDFEAE1cl4GkHoVE2H657Gbl7qsICooTXOl7fGZ7J6P1ltGTt3e8V16KGWCDE4tkpEwAe7QPS7QIfplc',
+            Container(
+              width: 28,
               height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.auto_stories,
+                size: 18,
+                color: AppColors.secondaryFixed,
+              ),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -145,8 +147,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             padding: EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuDci-_WOg-hpWXPdt5HZIv-ZHsdh4ejURS6gfzzIFk-zxjctnx7Pp-1rgbuB4A6gj_DKvzapUNgTYZuyFjrv7846J8Fb8CM5LTgP__PmM0v6r7_Io7wFWOCtYj35FrbpTiClLy4c2B34xMDvvSCmQ-QyDOsdOzAcFeptBDBfhPfyyGD-6IQ2btdHKIJjpnk9Kxf8pwDe62ZdxIOKLtLY5fMwpmAwLq9u3ypWJ3iPQ6yDIDuQ-vbDs36',
+              backgroundColor: AppColors.surfaceContainerLow,
+              child: Icon(
+                Icons.person,
+                size: 18,
+                color: AppColors.onSurfaceVariant,
               ),
             ),
           ),
@@ -276,11 +281,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   const SizedBox(width: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBIHG2e2Y4fiThLzxqwwpjapselgMNV_iEO422k0HdCvTPkpbXJWxbWDVPn4Qlb2pPhyRJdd9ctbm4xs_37duuLasJEzkN8DaGsvFTv9lwFme8g7VxV5VZ4AnBe7_oqejfZRuMtzzQHgK6rBu4nqSaRqwuO-X-JyvGO-AhumLrAhmYV4PLomDY_JpPHD3q80S0nMHZt1jynDEMhPrLPLKbh06HadzBbZMbgP0c9VGPNkQw0_ZlAhQLX',
+                    child: Container(
                       width: 60,
                       height: 60,
-                      fit: BoxFit.cover,
+                      color: AppColors.secondaryFixed.withValues(alpha: 0.45),
+                      child: const Icon(
+                        Icons.wb_sunny_outlined,
+                        color: AppColors.secondary,
+                      ),
                     ),
                   ),
                 ],
@@ -312,7 +320,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     color: AppColors.outline,
                     size: 20,
                   ),
-                  hintText: 'Buscar citas, libros o notas...',
+                  hintText: 'Buscar versículos o libros...',
                   hintStyle: const TextStyle(
                     fontSize: 14,
                     color: AppColors.outline,
@@ -336,62 +344,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
 
             const SizedBox(height: 16),
-
-            // Chips Filtros Horizontales
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _tags.map((tag) {
-                  final isSelected = _selectedTag == tag;
-                  final label = tag == 'all'
-                      ? 'Todos'
-                      : '${tag[0].toUpperCase()}${tag.substring(1)}';
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(label),
-                          if (isSelected) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppColors.secondaryContainer,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() => _selectedTag = tag);
-                        }
-                      },
-                      selectedColor: AppColors.primaryContainer,
-                      backgroundColor: AppColors.surfaceContainerLowest,
-                      labelStyle: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? AppColors.onPrimary
-                            : AppColors.onSurfaceVariant,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      side: BorderSide.none,
-                      elevation: 1,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
 
             const SizedBox(height: 20),
 
@@ -538,7 +490,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'No hay pasajes en esta categoría',
+            'Aún no tienes favoritos',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -547,13 +499,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Explora la Biblia y pulsa la estrella en tus versículos preferidos para conservarlos aquí.',
+            'Explora la Biblia y pulsa la estrella de un versículo para guardarlo aquí.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _resetFilters,
+            onPressed: () => Navigator.of(context).pushNamed('/bible'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryContainer,
               foregroundColor: AppColors.onPrimary,
@@ -561,7 +513,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Ver todos los favoritos'),
+            child: const Text('Explorar Biblia'),
           ),
         ],
       ),
