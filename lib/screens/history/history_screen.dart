@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
+import '../../repositories/question_history_repository.dart';
+import '../../models/verse_model.dart';
 import 'widgets/history_card.dart';
-import 'widgets/wisdom_banner.dart';
 
 class HistoryItem {
   final String id;
@@ -12,7 +14,6 @@ class HistoryItem {
   final int versesCount;
   final String keywords;
   bool isStarred;
-  final bool hasExegesis;
 
   HistoryItem({
     required this.id,
@@ -23,7 +24,6 @@ class HistoryItem {
     required this.versesCount,
     required this.keywords,
     this.isStarred = false,
-    this.hasExegesis = false,
   });
 }
 
@@ -35,51 +35,70 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  final QuestionHistoryRepository _repository =
+      QuestionHistoryRepository.instance;
   final TextEditingController _searchController = TextEditingController();
-  String _activeFilter = 'all'; // 'all', 'saved', 'exegesis'
+  String _activeFilter = 'all'; // 'all', 'saved', 'results'
+  List<HistoryItem> _items = [];
 
-  final List<HistoryItem> _items = [
-    HistoryItem(
-      id: 'h1',
-      timeframe: 'semana',
-      dateText: 'Hoy, 09:42 AM',
-      title: '¿Qué dice la Biblia sobre el miedo y la ansiedad?',
-      previewText:
-          'Dios nos invita a depositar nuestras cargas en Él, prometiendo una paz que sobrepasa todo entendimiento (Isaías 41:10, Filipenses 4:6-7)...',
-      versesCount: 3,
-      keywords: 'miedo ansiedad isaias filipenses paz',
-      isStarred: true,
-      hasExegesis: true,
-    ),
-    HistoryItem(
-      id: 'h2',
-      timeframe: 'semana',
-      dateText: 'Ayer, 06:15 PM',
-      title: '¿Cómo puedo fortalecer mi fe en momentos de incertidumbre?',
-      previewText:
-          'La fe viene por el oír de la Palabra. La perseverancia en la oración y el refugio compartido en la comunidad renuevan continuamente el espíritu...',
-      versesCount: 4,
-      keywords: 'fortalecer fe incertidumbre oracion comunidad',
-      isStarred: false,
-      hasExegesis: false,
-    ),
-    HistoryItem(
-      id: 'h3',
-      timeframe: 'mes',
-      dateText: '24 Septiembre • 04:20 PM',
-      title:
-          '¿Qué significa Mateo 6:34 cuando dice “basta a cada día su propio afán”?',
-      previewText:
-          'Es una invitación a vivir en el presente con confianza plena en la provisión divina cotidiana, liberando la mente de temores venideros...',
-      versesCount: 2,
-      keywords: 'mateo afan provision cotidiana presente vivir',
-      isStarred: false,
-      hasExegesis: true,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository.current.addListener(_handleHistoryChanged);
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    await _repository.load();
+    if (mounted) _handleHistoryChanged();
+  }
+
+  void _handleHistoryChanged() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    setState(() {
+      _items = _repository.current.value
+          .map((entry) {
+            final date = DateTime.fromMillisecondsSinceEpoch(
+              entry.createdAtMilliseconds,
+            ).toLocal();
+            final age = now.difference(date);
+            final timeframe = age.inDays < 7 ? 'semana' : 'mes';
+            final time =
+                '${date.hour.toString().padLeft(2, '0')}:'
+                '${date.minute.toString().padLeft(2, '0')}';
+            final dateText = age.inDays == 0
+                ? 'Hoy, $time'
+                : age.inDays == 1
+                ? 'Ayer, $time'
+                : '${date.day.toString().padLeft(2, '0')}/'
+                      '${date.month.toString().padLeft(2, '0')} • $time';
+            final previewText = entry.results.isEmpty
+                ? 'No se encontraron coincidencias para esta consulta.'
+                : entry.results
+                      .map(
+                        (verse) =>
+                            '${verse.bookName} ${verse.chapter}:${verse.verse} — ${verse.text}',
+                      )
+                      .join(' ');
+            return HistoryItem(
+              id: entry.id,
+              timeframe: timeframe,
+              dateText: dateText,
+              title: entry.question,
+              previewText: previewText,
+              versesCount: entry.results.length,
+              keywords: entry.question.toLowerCase(),
+              isStarred: entry.isStarred,
+            );
+          })
+          .toList(growable: false);
+    });
+  }
 
   @override
   void dispose() {
+    _repository.current.removeListener(_handleHistoryChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -90,7 +109,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return _items.where((item) {
       // Filtro por Chips
       if (_activeFilter == 'saved' && !item.isStarred) return false;
-      if (_activeFilter == 'exegesis' && !item.hasExegesis) return false;
+      if (_activeFilter == 'results' && item.versesCount == 0) return false;
 
       // Filtro por Buscador
       if (query.isEmpty) return true;
@@ -106,7 +125,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Vaciar historial'),
         content: const Text(
-          '¿Deseas vaciar todo el historial de conversaciones guardadas? Esta acción no se puede deshacer.',
+          '¿Deseas borrar todas tus preguntas guardadas? Esta acción no se puede deshacer.',
         ),
         actions: [
           TextButton(
@@ -115,10 +134,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           TextButton(
             onPressed: () {
-              setState(() {
-                _items.clear();
+              _repository.clear().then((_) {
+                if (context.mounted) Navigator.of(context).pop();
               });
-              Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Vaciar'),
@@ -145,13 +163,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         title: Row(
           children: [
-            Image.network(
-              'https://lh3.googleusercontent.com/aida/AEtjO1W3jnvO55adWVwmyKUJh2se5gI4M-sgs1VUFkCXYcrGvFkmdREF4j5YcVqbht9_3tTOg1425qBi91QMQQOALRM8-39V5zTSUm_Pp31O93CPRHlEh59Irf3Hea766Yh1GgNgcRf1CqwQAFDG8u2Gp3KYgVvxiT3rBQATndImrJMgDFEAE1cl4GkHoVE2H657Gbl7qsICooTXOl7fGZ7J6P1ltGTt3e8V16KGWCDE4tkpEwAe7QPS7QIfplc',
+            Container(
+              width: 28,
               height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.auto_stories,
+                size: 18,
+                color: AppColors.secondaryFixed,
+              ),
             ),
             const SizedBox(width: 12),
             const Text(
-              'Lectura Bíblica',
+              'Biblia',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -161,19 +188,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.bookmark_border,
-              color: AppColors.onSurfaceVariant,
-            ),
-            onPressed: () {},
-          ),
           const Padding(
             padding: EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuDci-_WOg-hpWXPdt5HZIv-ZHsdh4ejURS6gfzzIFk-zxjctnx7Pp-1rgbuB4A6gj_DKvzapUNgTYZuyFjrv7846J8Fb8CM5LTgP__PmM0v6r7_Io7wFWOCtYj35FrbpTiClLy4c2B34xMDvvSCmQ-QyDOsdOzAcFeptBDBfhPfyyGD-6IQ2btdHKIJjpnk9Kxf8pwDe62ZdxIOKLtLY5fMwpmAwLq9u3ypWJ3iPQ6yDIDuQ-vbDs36',
+              backgroundColor: AppColors.surfaceContainerLow,
+              child: Icon(
+                Icons.person,
+                size: 18,
+                color: AppColors.onSurfaceVariant,
               ),
             ),
           ),
@@ -190,7 +213,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Icon(Icons.auto_stories, size: 18, color: AppColors.secondary),
                 SizedBox(width: 6),
                 Text(
-                  'ARCHIVO TEOLÓGICO',
+                  'CONSULTAS LOCALES',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -210,7 +233,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
             const Text(
-              'Tus diálogos y reflexiones guardadas con Biblia IA.',
+              'Tus preguntas y los pasajes encontrados en la Biblia.',
               style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
             ),
 
@@ -232,7 +255,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     color: AppColors.secondary,
                     size: 22,
                   ),
-                  hintText: 'Buscar en el historial de reflexiones...',
+                  hintText: 'Buscar preguntas o pasajes...',
                   hintStyle: const TextStyle(
                     fontSize: 14,
                     color: AppColors.outline,
@@ -270,7 +293,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(width: 8),
                   _buildFilterChip('saved', 'Guardadas', Icons.bookmark),
                   const SizedBox(width: 8),
-                  _buildFilterChip('exegesis', 'Con exégesis', Icons.menu_book),
+                  _buildFilterChip(
+                    'results',
+                    'Con resultados',
+                    Icons.menu_book,
+                  ),
                 ],
               ),
             ),
@@ -291,9 +318,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(height: 8),
                 ...semanaItems.map((item) => _buildCard(item)),
               ],
-
-              // Banner Sabiduría
-              const WisdomBanner(totalPassages: 9),
 
               // Sección: El Mes Pasado
               if (mesItems.isNotEmpty) ...[
@@ -328,7 +352,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Tus consultas están cifradas en este dispositivo',
+                    'Tus consultas se guardan en este dispositivo',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.outlineVariant,
@@ -430,17 +454,62 @@ class _HistoryScreenState extends State<HistoryScreen> {
       categoryIcon: item.isStarred
           ? Icons.psychology_alt
           : Icons.chat_bubble_outline,
-      onOpen: () {},
-      onToggleStar: () {
-        setState(() {
-          item.isStarred = !item.isStarred;
-        });
-      },
-      onDelete: () {
-        setState(() {
-          _items.removeWhere((e) => e.id == item.id);
-        });
-      },
+      onOpen: () => _openHistoryItem(item),
+      onToggleStar: () => _repository.toggleStar(item.id),
+      onDelete: () => _repository.remove(item.id),
+    );
+  }
+
+  void _openHistoryItem(HistoryItem item) {
+    final entry = _repository.current.value
+        .where((candidate) => candidate.id == item.id)
+        .firstOrNull;
+    if (entry == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(item.title),
+        content: entry.results.isEmpty
+            ? const Text('No se encontraron versículos para esta consulta.')
+            : ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: entry.results
+                        .map((verse) => _buildVerseResult(verse))
+                        .toList(growable: false),
+                  ),
+                ),
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerseResult(VerseModel verse) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${verse.bookName} ${verse.chapter}:${verse.verse}',
+            style: const TextStyle(
+              color: AppColors.secondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(verse.text),
+        ],
+      ),
     );
   }
 
@@ -466,7 +535,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'No se encontraron diálogos',
+            'No hay consultas para mostrar',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -475,7 +544,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Prueba buscando con palabras clave como “paz”, “fe”, “oración” o citas de capítulos.',
+            'Haz una pregunta en Inicio para buscar pasajes y guardarlos en este historial.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
           ),

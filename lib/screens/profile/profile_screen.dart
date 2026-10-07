@@ -141,9 +141,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildListTile(
                 icon: Icons.chat_bubble_outline,
                 title: 'Historial de preguntas',
-                subtitle: 'Reflexiones teológicas con IA',
-                trailingBadge: '18 consultas',
-                onTap: () {},
+                subtitle: 'Tus consultas bíblicas recientes',
+                onTap: () => Navigator.of(context).pushNamed('/history'),
               ),
               const Divider(height: 1, indent: 56),
               _buildProgressListTile(

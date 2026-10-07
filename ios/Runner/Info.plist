@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Usamos el micrófono para buscar pasajes bíblicos con tu voz.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Convertimos tu voz en palabras para buscar en la Biblia.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

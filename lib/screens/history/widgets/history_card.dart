@@ -185,7 +185,7 @@ class HistoryCard extends StatelessWidget {
                       onPressed: onOpen,
                       icon: const Icon(Icons.arrow_forward, size: 16),
                       label: Text(
-                        isStarred ? 'Abrir conversación' : 'Reanudar diálogo',
+                        isStarred ? 'Ver resultados' : 'Abrir consulta',
                       ),
                       style: ElevatedButton.styleFrom(
                         elevation: 0,

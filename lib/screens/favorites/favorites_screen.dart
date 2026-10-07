@@ -91,11 +91,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     unawaited(_repository.remove(id));
   }
 
-  void _resetFilters() {
-    _searchController.clear();
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     final filteredList = _filteredVerses;

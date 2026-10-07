@@ -6,14 +6,20 @@ import 'screens/chat/chat_screen.dart';
 import 'screens/favorites/favorites_screen.dart';
 import 'screens/history/history_screen.dart';
 import 'screens/main_navigation.dart';
+import 'screens/bible/voice_search_screen.dart';
 import 'repositories/bible_repository.dart';
 
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   final BibleDataSource? bibleDataSource;
+  final bool autoStartVoiceSearch;
 
-  const MyApp({super.key, this.bibleDataSource});
+  const MyApp({
+    super.key,
+    this.bibleDataSource,
+    this.autoStartVoiceSearch = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +62,10 @@ class MyApp extends StatelessWidget {
         },
         '/favorites': (context) => const FavoritesScreen(),
         '/history': (context) => const HistoryScreen(),
+        '/voice-search': (context) => VoiceSearchScreen(
+          dataSource: bibleDataSource,
+          autoStartListening: autoStartVoiceSearch,
+        ),
         '/profile': (context) =>
             MainNavigationScreen(initialIndex: 2, dataSource: bibleDataSource),
         '/chat': (context) => const ChatScreen(),

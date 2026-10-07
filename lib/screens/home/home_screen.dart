@@ -81,7 +81,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _buildGreeting(),
             const SizedBox(height: 20),
-            const AiPromptCard(),
+            AiPromptCard(dataSource: dataSource),
             const SizedBox(height: 24),
             DailyVerseCard(dataSource: dataSource),
             const SizedBox(height: 20),
