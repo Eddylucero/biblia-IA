@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../repositories/favorite_verse_repository.dart';
+import '../bible/verse_share_screen.dart';
 import 'widgets/favorite_verse_card.dart';
 import 'widgets/favorites_audio_card.dart';
 
@@ -89,6 +90,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   void _removeVerse(String id) {
     unawaited(_repository.remove(id));
+  }
+
+  void _openShareComposer(FavoriteVerseItem verse) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerseShareScreen(
+          reference: verse.reference,
+          verseText: verse.scriptureText,
+        ),
+      ),
+    );
   }
 
   @override
@@ -368,6 +381,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   accentColor: verse.accentColor,
                   bottomAction: bottomAction,
                   onDismiss: () => _removeVerse(verse.id),
+                  onShare: () => _openShareComposer(verse),
                 );
               }),
 

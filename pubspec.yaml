@@ -39,6 +39,8 @@ dependencies:
   path_provider: ^2.1.6
   shared_preferences: ^2.5.6
   speech_to_text: ^7.4.0
+  share_plus: ^13.3.1
+  gal: ^2.3.3
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +69,27 @@ flutter:
     - assets/img/
     - assets/reflexiones/
     - assets/fondos-img/
+
+  # Tipografías del compositor para compartir versículos (estilo Instagram).
+  fonts:
+    - family: VerseClassic
+      fonts:
+        - asset: assets/fonts/CrimsonText-Bold.ttf
+    - family: VerseModern
+      fonts:
+        - asset: assets/fonts/Poppins-Bold.ttf
+    - family: VerseStrong
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
+    - family: VerseTypewriter
+      fonts:
+        - asset: assets/fonts/CourierPrime-Bold.ttf
+    - family: VerseHandwritten
+      fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf
+    - family: VerseCalligraphy
+      fonts:
+        - asset: assets/fonts/GreatVibes-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -168,14 +168,16 @@ VoiceBibleReference? parseVoiceBibleReference(
       if (numbers.length == 2) break;
     }
 
-    if (numbers.length < 2) return null;
+    // Si este libro no trae capítulo y versículo válidos seguimos con los
+    // demás alias en vez de abandonar la frase entera.
+    if (numbers.length < 2) continue;
     final chapter = numbers[0];
     final verse = numbers[1];
     if (chapter < 1 ||
         chapter > entry.book.chaptersCount ||
         verse < 1 ||
         verse > 200) {
-      return null;
+      continue;
     }
     return VoiceBibleReference(
       book: entry.book,
@@ -212,6 +214,7 @@ class _VoiceBibleSearchSheetState extends State<VoiceBibleSearchSheet> {
   String _transcription = '';
   String? _message;
   String? _spanishLocaleId;
+  String? _interpretedTranscription;
   Timer? _finishFallback;
 
   @override
@@ -246,6 +249,7 @@ class _VoiceBibleSearchSheetState extends State<VoiceBibleSearchSheet> {
       _message = null;
       _transcription = '';
     });
+    _interpretedTranscription = null;
     _finishFallback?.cancel();
     try {
       final available = await _speechToText.initialize(
@@ -281,7 +285,11 @@ class _VoiceBibleSearchSheetState extends State<VoiceBibleSearchSheet> {
           listenFor: const Duration(seconds: 30),
           pauseFor: const Duration(seconds: 3),
           partialResults: true,
-          cancelOnError: true,
+          // Android marca TODOS sus errores como permanentes (incluido el
+          // `error_no_match` que llega al terminar de hablar). Con
+          // `cancelOnError: true` el plugin cancelaba la sesión y descartaba
+          // el resultado final, así que la transcripción nunca se buscaba.
+          cancelOnError: false,
           contextualPhrases: widget.books
               .expand((book) => [book.name, book.modernName])
               .toList(growable: false),
@@ -331,10 +339,41 @@ class _VoiceBibleSearchSheetState extends State<VoiceBibleSearchSheet> {
   void _onSpeechError(SpeechRecognitionError error) {
     if (!mounted) return;
     _finishFallback?.cancel();
+    // Si ya hay transcripción, el error no es un fallo: Android avisa
+    // `error_no_match` / `error_speech_timeout` al cerrar el micrófono aunque
+    // haya reconocido texto. Interpretamos lo que escuchamos en vez de
+    // descartarlo.
+    if (_transcription.trim().isNotEmpty) {
+      setState(() => _isListening = false);
+      unawaited(_interpretTranscription());
+      return;
+    }
     setState(() {
       _isListening = false;
-      _message = 'No pude reconocer la voz. Toca el micrófono para reintentar.';
+      _message = _speechErrorMessage(error);
     });
+  }
+
+  String _speechErrorMessage(SpeechRecognitionError error) {
+    switch (error.errorMsg) {
+      case 'error_no_match':
+      case 'error_speech_timeout':
+        return 'No te escuché. Toca el micrófono y di, por ejemplo: «Juan tres dieciséis».';
+      case 'error_permission':
+        return 'Necesito permiso para usar el micrófono. Actívalo en los ajustes.';
+      case 'error_network':
+      case 'error_network_timeout':
+      case 'error_server':
+      case 'error_server_disconnected':
+        return 'El reconocimiento de voz necesita conexión. Revisa tu internet.';
+      case 'error_busy':
+        return 'El micrófono está ocupado. Espera un momento y reintenta.';
+      case 'error_language_not_supported':
+      case 'error_language_unavailable':
+        return 'Este dispositivo no tiene el español descargado para dictado.';
+      default:
+        return 'No pude reconocer la voz. Toca el micrófono para reintentar.';
+    }
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {
@@ -354,7 +393,14 @@ class _VoiceBibleSearchSheetState extends State<VoiceBibleSearchSheet> {
 
   Future<void> _interpretTranscription() async {
     if (_isValidating) return;
-    final reference = parseVoiceBibleReference(_transcription, widget.books);
+    final transcription = _transcription.trim();
+    // El resultado final, el error y el temporizador de respaldo pueden llegar
+    // casi juntos; interpretamos una sola vez cada frase.
+    if (transcription.isEmpty || transcription == _interpretedTranscription) {
+      return;
+    }
+    _interpretedTranscription = transcription;
+    final reference = parseVoiceBibleReference(transcription, widget.books);
     if (reference == null) {
       if (mounted) {
         setState(() {

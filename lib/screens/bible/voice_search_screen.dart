@@ -122,7 +122,11 @@ class _VoiceSearchScreenState extends State<VoiceSearchScreen> {
           listenFor: const Duration(seconds: 30),
           pauseFor: const Duration(seconds: 3),
           partialResults: true,
-          cancelOnError: true,
+          // Android marca TODOS sus errores como permanentes (incluido el
+          // `error_no_match` que llega al terminar de hablar). Con
+          // `cancelOnError: true` el plugin cancelaba la sesión y descartaba
+          // el resultado final, así que la frase nunca se buscaba.
+          cancelOnError: false,
           contextualPhrases: const [
             'Jesús',
             'Moisés',
@@ -180,11 +184,40 @@ class _VoiceSearchScreenState extends State<VoiceSearchScreen> {
   void _onSpeechError(SpeechRecognitionError error) {
     if (!mounted) return;
     _speechFinishFallback?.cancel();
+    // Si ya hay transcripción, el error no es un fallo: Android avisa
+    // `error_no_match` / `error_speech_timeout` al cerrar el micrófono aunque
+    // haya reconocido texto. Buscamos con lo que escuchamos.
+    if (_transcription.trim().isNotEmpty && !_hasSubmittedCurrentUtterance) {
+      setState(() => _isListening = false);
+      _finishVoiceSearch();
+      return;
+    }
     setState(() {
       _isListening = false;
-      _statusMessage =
-          'No pude reconocer la voz. Toca el micrófono para intentarlo de nuevo.';
+      _statusMessage = _speechErrorMessage(error);
     });
+  }
+
+  String _speechErrorMessage(SpeechRecognitionError error) {
+    switch (error.errorMsg) {
+      case 'error_no_match':
+      case 'error_speech_timeout':
+        return 'No te escuché. Toca el micrófono y di de 3 a 5 palabras clave.';
+      case 'error_permission':
+        return 'Necesito permiso para usar el micrófono. Actívalo en los ajustes.';
+      case 'error_network':
+      case 'error_network_timeout':
+      case 'error_server':
+      case 'error_server_disconnected':
+        return 'El reconocimiento de voz necesita conexión. Revisa tu internet.';
+      case 'error_busy':
+        return 'El micrófono está ocupado. Espera un momento y reintenta.';
+      case 'error_language_not_supported':
+      case 'error_language_unavailable':
+        return 'Este dispositivo no tiene el español descargado para dictado.';
+      default:
+        return 'No pude reconocer la voz. Toca el micrófono para intentarlo de nuevo.';
+    }
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {

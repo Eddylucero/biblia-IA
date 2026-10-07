@@ -6,6 +6,7 @@ import '../../models/verse_model.dart';
 import '../../repositories/bible_repository.dart';
 import '../../repositories/favorite_verse_repository.dart';
 import '../../repositories/reading_progress_repository.dart';
+import 'verse_share_screen.dart';
 import 'widgets/verse_tile.dart';
 
 class ChapterViewScreen extends StatefulWidget {
@@ -129,6 +130,18 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
     );
     if (!mounted || _selectedVerseNumber != verse.verse) return;
     setState(() => _isVerseBookmarked = isBookmarked);
+  }
+
+  void _openShareComposer(VerseModel verse) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerseShareScreen(
+          reference: '${widget.bookName} $_chapterNumber:${verse.verse}',
+          verseText: verse.text,
+        ),
+      ),
+    );
   }
 
   Future<void> _saveReadingProgress() async {
@@ -314,6 +327,7 @@ class _ChapterViewScreenState extends State<ChapterViewScreen> {
                           isBookmarked: _isVerseBookmarked,
                           onTap: () => _selectVerse(verse),
                           onBookmark: () => _toggleFavorite(verse),
+                          onShare: () => _openShareComposer(verse),
                         ),
                       ),
                     ],
