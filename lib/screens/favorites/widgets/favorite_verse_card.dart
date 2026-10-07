@@ -6,7 +6,6 @@ class FavoriteVerseCard extends StatelessWidget {
   final String date;
   final String scriptureText;
   final String reference;
-  final String version;
   final Color accentColor;
   final Widget? bottomAction;
   final VoidCallback onDismiss;
@@ -18,7 +17,6 @@ class FavoriteVerseCard extends StatelessWidget {
     required this.date,
     required this.scriptureText,
     required this.reference,
-    this.version = 'RVR1960',
     this.accentColor = AppColors.secondary,
     this.bottomAction,
     required this.onDismiss,
@@ -172,7 +170,6 @@ class FavoriteVerseCard extends StatelessWidget {
                           ),
                           children: [
                             TextSpan(
-                              text: ' • $version',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.normal,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import 'widgets/profile_header_card.dart';
-import 'widgets/offline_status_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -118,12 +117,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               name: 'Ana Martínez',
               email: 'ana.martinez@email.com',
               streakDays: 42,
-              avatarUrl:
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuDci-_WOg-hpWXPdt5HZIv-ZHsdh4ejURS6gfzzIFk-zxjctnx7Pp-1rgbuB4A6gj_DKvzapUNgTYZuyFjrv7846J8Fb8CM5LTgP__PmM0v6r7_Io7wFWOCtYj35FrbpTiClLy4c2B34xMDvvSCmQ-QyDOsdOzAcFeptBDBfhPfyyGD-6IQ2btdHKIJjpnk9Kxf8pwDe62ZdxIOKLtLY5fMwpmAwLq9u3ypWJ3iPQ6yDIDuQ-vbDs36',
+              avatarUrl: 'assets/img/perfil.jpeg',
             ),
-
-            // Card Estado Offline
-            OfflineStatusCard(storageUsed: '184 MB', onManageDownloads: () {}),
 
             const SizedBox(height: 24),
 

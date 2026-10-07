@@ -9,11 +9,13 @@ import 'package:biblia/models/book_model.dart';
 import 'package:biblia/models/verse_model.dart';
 import 'package:biblia/repositories/bible_repository.dart';
 import 'package:biblia/screens/bible/widgets/verse_tile.dart';
+import 'package:biblia/screens/bible/widgets/voice_bible_search_sheet.dart';
 import 'package:biblia/repositories/reading_progress_repository.dart';
 import 'package:biblia/repositories/favorite_verse_repository.dart';
 import 'package:biblia/repositories/question_history_repository.dart';
 import 'package:biblia/screens/history/widgets/history_card.dart';
 import 'package:biblia/screens/bible/voice_search_screen.dart';
+import 'package:biblia/screens/bible/bible_screen.dart';
 
 class _FakeBibleDataSource implements BibleDataSource {
   final Completer<List<VerseModel>>? pendingSearch;
@@ -107,6 +109,83 @@ void main() {
       'busca donde Jesús lloró por',
     );
     expect(limitVoiceSearchWords('Jesús lloró'), 'Jesús lloró');
+  });
+
+  test('voice reference parser resolves Spanish book chapter and verse', () {
+    final reference = parseVoiceBibleReference(
+      'Juan capítulo once versículo treinta y cinco',
+      [
+        const BookModel(
+          id: 43,
+          name: 'Juan',
+          modernName: 'Juan',
+          isNewTestament: true,
+          chaptersCount: 21,
+        ),
+      ],
+    );
+
+    expect(reference?.book.id, 43);
+    expect(reference?.chapter, 11);
+    expect(reference?.verse, 35);
+  });
+
+  test('voice reference parser accepts words before the book name', () {
+    final reference = parseVoiceBibleReference(
+      'Busca en el libro de Juan capítulo once versículo treinta y cinco',
+      [
+        const BookModel(
+          id: 43,
+          name: 'Juan',
+          modernName: 'Juan',
+          isNewTestament: true,
+          chaptersCount: 21,
+        ),
+      ],
+    );
+
+    expect(reference?.book.name, 'Juan');
+    expect(reference?.chapter, 11);
+    expect(reference?.verse, 35);
+  });
+
+  test('voice reference parser rejects incomplete or invalid references', () {
+    const books = [
+      BookModel(
+        id: 43,
+        name: 'Juan',
+        modernName: 'Juan',
+        isNewTestament: true,
+        chaptersCount: 21,
+      ),
+    ];
+
+    expect(parseVoiceBibleReference('Juan capítulo tres', books), isNull);
+    expect(
+      parseVoiceBibleReference('Juan capítulo noventa versículo dos', books),
+      isNull,
+    );
+  });
+
+  testWidgets('Bible voice button opens its listening modal', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BibleScreen(
+          dataSource: _FakeBibleDataSource(),
+          autoStartVoiceSearch: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Buscar con voz'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(VoiceBibleSearchSheet), findsOneWidget);
+    expect(find.text('Buscar una referencia'), findsOneWidget);
+    expect(find.textContaining('transcripción aparecerá aquí'), findsOneWidget);
   });
 
   testWidgets('voice search opens from Home resources', (

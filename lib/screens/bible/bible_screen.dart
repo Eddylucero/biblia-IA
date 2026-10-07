@@ -5,11 +5,17 @@ import '../../models/book_model.dart';
 import '../../repositories/bible_repository.dart';
 import 'widgets/bible_book_tile.dart';
 import 'widgets/chapter_selection_sheet.dart';
+import 'widgets/voice_bible_search_sheet.dart';
 
 class BibleScreen extends StatefulWidget {
   final BibleDataSource? dataSource;
+  final bool autoStartVoiceSearch;
 
-  const BibleScreen({super.key, this.dataSource});
+  const BibleScreen({
+    super.key,
+    this.dataSource,
+    this.autoStartVoiceSearch = true,
+  });
 
   @override
   State<BibleScreen> createState() => _BibleScreenState();
@@ -50,6 +56,31 @@ class _BibleScreenState extends State<BibleScreen> {
               'chapterNumber': chapter,
               'chaptersCount': book.chaptersCount,
               'selectedVerseNumber': verse,
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _openVoiceBibleSearch(List<BookModel> books) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => VoiceBibleSearchSheet(
+        books: books,
+        dataSource: _dataSource,
+        autoStartListening: widget.autoStartVoiceSearch,
+        onReferenceSelected: (reference) {
+          Navigator.of(context).pushNamed(
+            '/chapter',
+            arguments: {
+              'bookId': reference.book.id,
+              'bookName': reference.book.name,
+              'chapterNumber': reference.chapter,
+              'chaptersCount': reference.book.chaptersCount,
+              'selectedVerseNumber': reference.verse,
             },
           );
         },
@@ -113,12 +144,11 @@ class _BibleScreenState extends State<BibleScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildInfoPill(
-                          icon: Icons.verified_outlined,
-                          label: 'Biblia sin conexión',
-                        ),
-                        _buildInfoPill(
                           icon: Icons.menu_book,
                           label: '${books.length} libros',
+                        ),
+                        _buildVoiceSearchButton(
+                          onPressed: () => _openVoiceBibleSearch(books),
                         ),
                       ],
                     ),
@@ -298,6 +328,39 @@ class _BibleScreenState extends State<BibleScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceSearchButton({required VoidCallback onPressed}) {
+    return Material(
+      color: AppColors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.mic_none, size: 16, color: AppColors.secondary),
+              SizedBox(width: 6),
+              Text(
+                'Buscar con voz',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

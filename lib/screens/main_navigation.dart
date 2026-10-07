@@ -28,10 +28,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const ProfileScreen(),
   ];
 
+  int _clampSelectedIndex(int index) {
+    if (_screens.isEmpty) {
+      return 0;
+    }
+    return index.clamp(0, _screens.length - 1);
+  }
+
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
+    _selectedIndex = _clampSelectedIndex(widget.initialIndex);
+  }
+
+  @override
+  void didUpdateWidget(covariant MainNavigationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _selectedIndex = _clampSelectedIndex(widget.initialIndex);
+    }
   }
 
   @override
